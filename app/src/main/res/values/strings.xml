@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Timer Buddies</string>
+    <string name="select_time">Select Time</string>
+    <string name="start_timer">Start Timer</string>
+    <string name="pause_timer">Pause</string>
+    <string name="resume_timer">Resume</string>
+    <string name="reset_timer">Reset</string>
+    <string name="timer_complete">Time\'s Up!</string>
+    <string name="great_job">Great Job!</string>
+    <string name="minutes">minutes</string>
+    <string name="custom_time">Custom</string>
+</resources>
