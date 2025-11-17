@@ -81,8 +81,16 @@
         <ul>
             <li><strong>Notifications (POST_NOTIFICATIONS):</strong> Used to alert you when timers complete or reach milestones. You control whether to grant this permission.</li>
             <li><strong>Foreground Service:</strong> Allows timers to continue running accurately even when the app is in the background, ensuring you get timely notifications.</li>
-            <li><strong>Read Media Images (READ_MEDIA_IMAGES):</strong> Enables you to select custom images from your photo gallery to personalize your timers. Images are only accessed when you explicitly choose them.</li>
             <li><strong>Internet (INTERNET):</strong> Used to generate AI-powered custom images for your timers when you use the AI image generation feature. Image generation requests are sent to third-party AI services only when you explicitly request them.</li>
+        </ul>
+        
+        <h2>3.1 Photo Access</h2>
+        <p>Timer Buddies uses Android's Photo Picker to allow you to select images for your timers. This system feature:</p>
+        <ul>
+            <li>Lets you choose specific photos without giving the app access to your entire photo library</li>
+            <li>Does not require any permission requests</li>
+            <li>Ensures the app only sees the images you explicitly select</li>
+            <li>Provides enhanced privacy protection built into Android</li>
         </ul>
 
         <h2>4. Data Storage and Security</h2>

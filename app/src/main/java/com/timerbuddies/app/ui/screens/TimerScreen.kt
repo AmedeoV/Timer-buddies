@@ -161,7 +161,7 @@ fun TimeSelectionScreen(
     var showPresetsDialog by remember { mutableStateOf(false) }
     
     val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+        contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         onImageSelected(uri)
     }
@@ -189,7 +189,13 @@ fun TimeSelectionScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             OutlinedButton(
-                onClick = { imagePickerLauncher.launch("image/*") },
+                onClick = { 
+                    imagePickerLauncher.launch(
+                        androidx.activity.result.PickVisualMediaRequest(
+                            ActivityResultContracts.PickVisualMedia.ImageOnly
+                        )
+                    )
+                },
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = if (selectedImageUri != null) 
