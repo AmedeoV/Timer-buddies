@@ -73,12 +73,10 @@ fun CircularTimerDisplay(
     )
 
     Box(
-        modifier = Modifier
-            .size(320.dp)
-            .clip(CircleShape),
+        modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        // Show custom image if provided, otherwise show gradient
+        // Fullscreen background image
         if (customImageUri != null) {
             android.util.Log.d("TimerBuddies", "CircularTimerDisplay - customImageUri: $customImageUri")
             AsyncImage(
@@ -86,7 +84,6 @@ fun CircularTimerDisplay(
                 contentDescription = "Reward Image",
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(CircleShape)
                     .rotate(rotation),
                 contentScale = ContentScale.Crop,
                 onError = { error ->
@@ -96,119 +93,47 @@ fun CircularTimerDisplay(
                     android.util.Log.d("TimerBuddies", "Image loaded successfully")
                 }
             )
+        } else {
+            // Gradient background if no image
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                Color(0xFFFFE0B2),
+                                Color(0xFFFFCC80)
+                            )
+                        )
+                    )
+            )
         }
+
         
-        // Background with revealed image effect
+        // Overlay canvas for reveal effect and progress indicator
         Canvas(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(CircleShape)
+            modifier = Modifier.fillMaxSize()
         ) {
             val canvasWidth = size.width
             val canvasHeight = size.height
-
-            // Draw the reward image area (gradually revealed) - only show gradient if no custom image
-            val revealPath = Path().apply {
-                addOval(Rect(0f, 0f, canvasWidth, canvasHeight))
-            }
-
-            if (customImageUri == null) {
-                clipPath(revealPath) {
-                    // Background gradient - Fun Rainbow Theme
-                    val gradientColors = if (isComplete) {
-                        listOf(
-                            Color(0xFFFFBE0B), // Sunny Yellow
-                            Color(0xFFFF6B35), // Bright Orange
-                            Color(0xFFFF006E), // Bubblegum Pink
-                            Color(0xFF8338EC), // Playful Purple
-                            Color(0xFF06D6A0)  // Fun Green
-                        )
-                    } else {
-                        listOf(
-                            Color(0xFF3A86FF), // Happy Blue
-                            Color(0xFF8338EC), // Playful Purple
-                            Color(0xFFFF006E), // Bubblegum Pink
-                        Color(0xFF06D6A0)  // Fun Green
-                    )
-                }
-
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = gradientColors,
-                            center = Offset(canvasWidth / 2, canvasHeight / 2),
-                            radius = canvasWidth / 2 * (0.3f + revealProgress * 0.7f)
-                        )
-                    )
-
-                    // Add colorful sparkle effect when revealing
-                    if (revealProgress > 0.3f) {
-                        repeat(8) { index ->
-                            val angle = (index * 45f) * (Math.PI / 180f)
-                            val distance = canvasWidth * 0.35f * revealProgress
-                            val x = (canvasWidth / 2) + (distance * cos(angle)).toFloat()
-                            val y = (canvasHeight / 2) + (distance * sin(angle)).toFloat()
-                            val starSize = 20f * revealProgress
-
-                            // Colorful sparkles rotating through rainbow
-                            val sparkleColor = when (index % 4) {
-                                0 -> Color(0xFFFFBE0B) // Yellow
-                                1 -> Color(0xFFFF6B35) // Orange
-                                2 -> Color(0xFFFF006E) // Pink
-                                else -> Color(0xFF06D6A0) // Green
-                            }
-                            
-                            drawCircle(
-                                color = sparkleColor.copy(alpha = revealProgress * 0.8f),
-                                radius = starSize,
-                                center = Offset(x, y)
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Draw the overlay circle that "hides" the image (shrinks as time passes)
+            val centerX = canvasWidth / 2
+            val centerY = canvasHeight / 2
+            
+            // Calculate circular reveal radius based on screen size
+            val maxRadius = kotlin.math.sqrt((canvasWidth * canvasWidth + canvasHeight * canvasHeight).toDouble()).toFloat() / 2
+            
+            // Draw overlay that shrinks as time passes (revealing the image)
             if (!isComplete) {
-                val overlayRadius = canvasWidth / 2 * (1f - revealProgress)
+                val overlayRadius = maxRadius * (1f - revealProgress)
                 drawCircle(
                     color = Color.White,
                     radius = overlayRadius,
-                    center = Offset(canvasWidth / 2, canvasHeight / 2)
-                )
-            }
-
-            // Draw the circular progress indicator - Rainbow gradient! 🌈
-            if (!isComplete) {
-                val strokeWidth = 12f
-                val sweepAngle = 360f * (remainingSeconds.toFloat() / totalSeconds.toFloat())
-
-                // Create rainbow gradient brush
-                val rainbowBrush = Brush.sweepGradient(
-                    colors = listOf(
-                        Color(0xFFFF4747), // Red
-                        Color(0xFFFF9500), // Orange
-                        Color(0xFFFFD600), // Yellow
-                        Color(0xFF00E676), // Green
-                        Color(0xFF2979FF), // Blue
-                        Color(0xFF536DFE), // Indigo
-                        Color(0xFF9C27B0), // Violet
-                        Color(0xFFFF4747)  // Back to red
-                    )
-                )
-
-                drawArc(
-                    brush = rainbowBrush,
-                    startAngle = -90f,
-                    sweepAngle = sweepAngle,
-                    useCenter = false,
-                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
-                    size = Size(canvasWidth - strokeWidth, canvasHeight - strokeWidth),
-                    topLeft = Offset(strokeWidth / 2, strokeWidth / 2)
+                    center = Offset(centerX, centerY)
                 )
             }
         }
 
-        // Time display or completion message
+        // Time display or completion message - centered on screen
         if (isComplete) {
             // Auto-hide text after 3 seconds
             var showText by remember { mutableStateOf(true) }
@@ -221,36 +146,73 @@ fun CircularTimerDisplay(
             if (showText) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 100.dp)
+                        .wrapContentSize(Alignment.Center)
                 ) {
                     Text(
                         text = "🎉",
-                        fontSize = 64.sp
+                        fontSize = 80.sp
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Awesome!",
+                        fontSize = 48.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        style = androidx.compose.ui.text.TextStyle(
+                            shadow = androidx.compose.ui.graphics.Shadow(
+                                color = Color.Black.copy(alpha = 0.5f),
+                                offset = Offset(4f, 4f),
+                                blurRadius = 8f
+                            )
+                        )
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Awesome!",
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                    Text(
                         text = "⭐",
-                        fontSize = 40.sp
+                        fontSize = 64.sp
                     )
                 }
             }
         } else {
-            Text(
-                text = if (remainingSeconds < 60) {
-                    seconds.toString()
-                } else {
-                    String.format("%02d:%02d", minutes, seconds)
-                },
-                fontSize = 56.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
+            // Timer countdown display - centered on screen
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 100.dp)
+                    .wrapContentSize(Alignment.Center)
+            ) {
+                // Background box for better contrast
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = Color.Black.copy(alpha = 0.6f),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
+                        )
+                        .padding(horizontal = 32.dp, vertical = 16.dp)
+                ) {
+                    Text(
+                        text = if (remainingSeconds < 60) {
+                            seconds.toString()
+                        } else {
+                            String.format("%02d:%02d", minutes, seconds)
+                        },
+                        fontSize = 96.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        style = androidx.compose.ui.text.TextStyle(
+                            shadow = androidx.compose.ui.graphics.Shadow(
+                                color = Color.Black.copy(alpha = 0.9f),
+                                offset = Offset(6f, 6f),
+                                blurRadius = 12f
+                            )
+                        )
+                    )
+                }
+            }
         }
         
         // Draw confetti when complete

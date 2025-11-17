@@ -1,10 +1,13 @@
 package com.timerbuddies.app.ui.screens
 
 import android.net.Uri
+import android.view.WindowManager
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -285,7 +288,7 @@ fun TimeSelectionScreen(
         }
 
         Text(
-            text = "How long do you need? 🚀",
+            text = "How long? 🚀",
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(bottom = 16.dp)
         )
@@ -539,6 +542,22 @@ fun TimerRunningScreen(
     val context = LocalContext.current
     var imageSaved by remember { mutableStateOf(false) }
     
+    // Handle back button press to go back to setup screen
+    BackHandler {
+        onBack()
+    }
+    
+    // Keep screen on while timer is running
+    DisposableEffect(timerState.isRunning) {
+        val window = (context as? android.app.Activity)?.window
+        if (timerState.isRunning) {
+            window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        onDispose {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+    
     // Clock ticking sound using MP3 file
     val tickingPlayer = remember {
         android.media.MediaPlayer.create(context, com.timerbuddies.app.R.raw.clock_ticking).apply {
@@ -611,131 +630,179 @@ fun TimerRunningScreen(
         }
     }
 
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceEvenly
-        ) {
-            // Circular timer with image reveal
-            CircularTimerDisplay(
-                totalSeconds = timerState.totalSeconds,
-                remainingSeconds = timerState.remainingSeconds,
-                revealProgress = timerState.revealProgress,
-                isComplete = timerState.isComplete,
-                customImageUri = timerState.customImageUri
-            )
+    // State to control UI visibility
+    var showControls by remember { mutableStateOf(true) }
+    
+    // Auto-hide controls after 3 seconds when timer is running
+    LaunchedEffect(showControls, timerState.isRunning) {
+        if (showControls && timerState.isRunning && !timerState.isComplete) {
+            delay(3000)
+            showControls = false
+        }
+    }
 
-            // Control buttons
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.padding(top = 32.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clickable(
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                indication = null
             ) {
-                if (!timerState.isComplete) {
-                    if (!timerState.isRunning) {
-                        Button(
-                            onClick = onStart,
-                            modifier = Modifier
-                                .height(64.dp)
-                                .width(140.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary
+                showControls = !showControls
+            }
+    ) {
+        // Fullscreen timer display
+        CircularTimerDisplay(
+            totalSeconds = timerState.totalSeconds,
+            remainingSeconds = timerState.remainingSeconds,
+            revealProgress = timerState.revealProgress,
+            isComplete = timerState.isComplete,
+            customImageUri = timerState.customImageUri
+        )
+
+        // Controls overlay - shown/hidden on tap
+        androidx.compose.animation.AnimatedVisibility(
+            visible = showControls,
+            enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically(initialOffsetY = { it }),
+            exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically(targetOffsetY = { it }),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.7f)
                             )
-                        ) {
-                            Text(
-                                text = if (timerState.remainingSeconds == timerState.totalSeconds) "Start" else "Resume",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                        )
+                    )
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Control buttons
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    if (!timerState.isComplete) {
+                        if (!timerState.isRunning) {
+                            Button(
+                                onClick = {
+                                    onStart()
+                                    showControls = true
+                                },
+                                modifier = Modifier
+                                    .height(64.dp)
+                                    .weight(1f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                Text(
+                                    text = if (timerState.remainingSeconds == timerState.totalSeconds) "Start" else "Resume",
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        } else {
+                            Button(
+                                onClick = {
+                                    onPause()
+                                    showControls = true
+                                },
+                                modifier = Modifier
+                                    .height(64.dp)
+                                    .weight(1f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondary
+                                )
+                            ) {
+                                Text(
+                                    text = "Pause",
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
-                    } else {
-                        Button(
-                            onClick = onPause,
-                            modifier = Modifier
-                                .height(64.dp)
-                                .width(140.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondary
-                            )
-                        ) {
-                            Text(
-                                text = "Pause",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                    }
+
+                    Button(
+                        onClick = {
+                            onReset()
+                            showControls = true
+                        },
+                        modifier = Modifier
+                            .height(64.dp)
+                            .weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (timerState.isComplete) 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.tertiary
+                        )
+                    ) {
+                        Text(
+                            text = if (timerState.isComplete) "New Timer" else "Reset",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
 
-                Button(
-                    onClick = onReset,
-                    modifier = Modifier
-                        .height(64.dp)
-                        .width(140.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (timerState.isComplete) 
-                            MaterialTheme.colorScheme.primary 
-                        else 
-                            MaterialTheme.colorScheme.tertiary
-                    )
-                ) {
-                    Text(
-                        text = if (timerState.isComplete) "New Timer" else "Reset",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-
-            // Save image button when complete
-            if (timerState.isComplete && timerState.customImageUri != null) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = { 
-                        timerState.customImageUri?.toString()?.let { url ->
-                            onSaveImage(url)
-                            imageSaved = true
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth(0.7f)
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (imageSaved) 
-                            MaterialTheme.colorScheme.tertiary 
-                        else 
-                            MaterialTheme.colorScheme.secondary
-                    ),
-                    enabled = !imageSaved
-                ) {
-                    Text(
-                        text = if (imageSaved) "💾 Image Saved!" else "💾 Save This Image",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                // Save image button when complete
+                if (timerState.isComplete && timerState.customImageUri != null) {
+                    Button(
+                        onClick = { 
+                            timerState.customImageUri?.toString()?.let { url ->
+                                onSaveImage(url)
+                                imageSaved = true
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (imageSaved) 
+                                MaterialTheme.colorScheme.tertiary 
+                            else 
+                                MaterialTheme.colorScheme.secondary
+                        ),
+                        enabled = !imageSaved
+                    ) {
+                        Text(
+                            text = if (imageSaved) "💾 Image Saved!" else "💾 Save This Image",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
 
-        // Back button in top left corner
-        OutlinedButton(
-            onClick = onBack,
+        // Back button overlay
+        androidx.compose.animation.AnimatedVisibility(
+            visible = showControls,
+            enter = androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.fadeOut(),
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(16.dp),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = MaterialTheme.colorScheme.primary
-            )
+                .padding(16.dp)
         ) {
-            Text(
-                text = "← Back",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium
-            )
+            OutlinedButton(
+                onClick = onBack,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color.White,
+                    containerColor = Color.Black.copy(alpha = 0.5f)
+                )
+            ) {
+                Text(
+                    text = "← Back",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
     }
 }
