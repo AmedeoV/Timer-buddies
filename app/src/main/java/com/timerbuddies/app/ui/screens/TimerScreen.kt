@@ -17,6 +17,8 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -1051,6 +1053,39 @@ fun AiImageDialog(
                                 ) {
                                     Text("Use This!")
                                 }
+                            }
+                            
+                            // Report button for inappropriate content
+                            OutlinedButton(
+                                onClick = {
+                                    // Log the report
+                                    android.util.Log.w("TimerBuddies_Report", "User reported AI image - Prompt: $prompt")
+                                    
+                                    // Show confirmation
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "Thank you for reporting. We take content safety seriously.",
+                                        android.widget.Toast.LENGTH_LONG
+                                    ).show()
+                                    
+                                    // Reset the dialog
+                                    generatedImageUrl = null
+                                    prompt = ""
+                                    imageLoaded = false
+                                    imageSaved = false
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = "Report",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Report Inappropriate Content", fontSize = 13.sp)
                             }
                         }
                     } else {
