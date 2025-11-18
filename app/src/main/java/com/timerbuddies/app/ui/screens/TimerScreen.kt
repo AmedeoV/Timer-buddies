@@ -829,17 +829,44 @@ fun AiImageDialog(
     var imageLoaded by remember { mutableStateOf(false) }
     var imageSaved by remember { mutableStateOf(false) }
     
-    // List of keywords that suggest non-kid-friendly content
+    // Comprehensive blocklist for inappropriate content
     val inappropriateKeywords = listOf(
+        // Violence & Weapons
         "scary", "horror", "violent", "blood", "gore", "weapon", "gun", "knife",
         "zombie", "ghost", "demon", "devil", "evil", "dark", "creepy", "spooky",
-        "monster", "skull", "death", "kill", "fight", "war", "angry", "mean"
+        "monster", "skull", "death", "kill", "fight", "war", "angry", "mean",
+        "murder", "stab", "shoot", "bomb", "explosive", "grenade", "sword",
+        
+        // Sexual Content
+        "sex", "sexy", "porn", "pornography", "nude", "naked", "breast", "penis",
+        "vagina", "genital", "erotic", "adult", "xxx", "nsfw", "explicit",
+        "intercourse", "fornication", "masturbat", "orgasm", "arousal", "seductive",
+        "provocative", "sensual", "intimate", "sexual", "lust", "fetish",
+        
+        // Profanity & Slurs (common ones)
+        "fuck", "shit", "damn", "bitch", "bastard", "asshole", "crap",
+        "whore", "slut", "dick", "cock", "pussy", "ass", "hell",
+        
+        // Drugs & Alcohol
+        "drug", "cocaine", "heroin", "meth", "weed", "marijuana", "alcohol",
+        "drunk", "high", "smoking", "cigarette", "vape",
+        
+        // Hate & Discrimination
+        "nazi", "hate", "racist", "bigot", "supremacist",
+        
+        // Other Inappropriate
+        "suicide", "self-harm", "abuse", "torture", "kidnap", "terrorist"
     )
     
     fun isPromptKidFriendly(text: String): Boolean {
-        val lowerText = text.lowercase()
+        val lowerText = text.lowercase().trim()
+        
+        // Check for exact word matches and partial matches
         return !inappropriateKeywords.any { keyword -> 
-            lowerText.contains(keyword)
+            // Check if keyword appears as a whole word or part of a word
+            lowerText.contains(keyword) || 
+            // Check with word boundaries
+            Regex("\\b${Regex.escape(keyword)}").containsMatchIn(lowerText)
         }
     }
 
@@ -874,29 +901,45 @@ fun AiImageDialog(
                         imageValidated = false
                         validationFailed = false
                         
-                        kotlinx.coroutines.delay(3000) // Give AI time to generate
+                        kotlinx.coroutines.delay(8000) // Give AI more time to generate (increased from 3s to 8s)
                         
-                        // Try to load the image to validate it's ready
-                        try {
-                            val loader = coil.ImageLoader(context)
-                            val request = coil.request.ImageRequest.Builder(context)
-                                .data(generatedImageUrl)
-                                .build()
-                            val result = loader.execute(request)
-                            
-                            if (result is coil.request.SuccessResult) {
-                                android.util.Log.d("TimerBuddies", "Image validated successfully")
-                                imageValidated = true
-                                imageLoaded = true
-                            } else {
-                                android.util.Log.e("TimerBuddies", "Image validation failed")
-                                validationFailed = true
-                                imageLoaded = true
+                        // Try to load the image to validate it's ready with retries
+                        var retries = 3
+                        var success = false
+                        
+                        while (retries > 0 && !success) {
+                            try {
+                                val loader = coil.ImageLoader(context)
+                                val request = coil.request.ImageRequest.Builder(context)
+                                    .data(generatedImageUrl)
+                                    .build()
+                                val result = loader.execute(request)
+                                
+                                if (result is coil.request.SuccessResult) {
+                                    android.util.Log.d("TimerBuddies", "Image validated successfully")
+                                    imageValidated = true
+                                    imageLoaded = true
+                                    success = true
+                                } else {
+                                    android.util.Log.e("TimerBuddies", "Image validation failed, retries left: ${retries - 1}")
+                                    retries--
+                                    if (retries > 0) {
+                                        kotlinx.coroutines.delay(2000) // Wait 2s before retry
+                                    } else {
+                                        validationFailed = true
+                                        imageLoaded = true
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("TimerBuddies", "Image validation error: ${e.message}, retries left: ${retries - 1}")
+                                retries--
+                                if (retries > 0) {
+                                    kotlinx.coroutines.delay(2000) // Wait 2s before retry
+                                } else {
+                                    validationFailed = true
+                                    imageLoaded = true
+                                }
                             }
-                        } catch (e: Exception) {
-                            android.util.Log.e("TimerBuddies", "Image validation error: ${e.message}")
-                            validationFailed = true
-                            imageLoaded = true
                         }
                     }
                     
